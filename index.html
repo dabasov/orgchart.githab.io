@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Organization Chart</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f0f2f5;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ── Toolbar ─────────────────────────────────────────────────────── */
+
+  #toolbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 46px;
+    background: #1a1a2e;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 100;
+  }
+
+  #toolbar h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-line { width: 24px; height: 2px; }
+  .legend-line.solid { background: #98a2b3; }
+  .legend-line.dashed { background: repeating-linear-gradient(90deg, #7c5cfc 0, #7c5cfc 4px, transparent 4px, transparent 8px); }
+  .legend-line.dashed-dm { background: repeating-linear-gradient(90deg, #e67e22 0, #e67e22 4px, transparent 4px, transparent 8px); }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
+
+  .actions { display: flex; gap: 6px; align-items: center; }
+
+  .actions button {
+    padding: 5px 11px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: transparent;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.75);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .actions button:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .actions button.primary { background: #7c5cfc; color: #fff; border-color: #7c5cfc; }
+  .actions button.primary:hover { background: #6a4de0; }
+
+  /* ── Canvas ──────────────────────────────────────────────────────── */
+
+  #canvas-container {
+    position: absolute;
+    top: 46px; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
+    cursor: grab;
+    background:
+      radial-gradient(circle at 1px 1px, #ddd 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  #canvas-container.grabbing { cursor: grabbing; }
+
+  #canvas {
+    position: absolute;
+    transform-origin: 0 0;
+  }
+
+  /* ── Section titles on canvas ────────────────────────────────────── */
+
+  .section-title {
+    position: absolute;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #98a2b3;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  /* ── Org nodes ───────────────────────────────────────────────────── */
+
+  .node {
+    position: absolute;
+    width: 172px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    cursor: grab;
+    user-select: none;
+    transition: box-shadow 0.15s;
+    border: 2px solid transparent;
+    overflow: hidden;
+  }
+
+  .node:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.06); }
+  .node.dragging { box-shadow: 0 8px 30px rgba(0,0,0,0.18); cursor: grabbing; z-index: 50; }
+  .node.vacant { border-style: dashed; border-color: #d0d5dd; opacity: 0.72; }
+
+  .node-color-bar { height: 4px; width: 100%; }
+  .node-body { padding: 8px 10px; text-align: center; }
+
+  .node-role {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.4px; color: #667085; margin-bottom: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .node-name { font-size: 12px; font-weight: 600; color: #1a1a2e; }
+  .node.vacant .node-name { color: #98a2b3; font-style: italic; }
+
+  /* ── Flow nodes ──────────────────────────────────────────────────── */
+
+  .flow-node {
+    position: absolute;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    cursor: grab;
+    user-select: none;
+    transition: box-shadow 0.15s;
+    border: 2px solid transparent;
+    overflow: hidden;
+    text-align: center;
+  }
+
+  .flow-node:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.14); }
+  .flow-node.dragging { box-shadow: 0 8px 30px rgba(0,0,0,0.2); cursor: grabbing; z-index: 50; }
+  .flow-color-bar { height: 5px; width: 100%; }
+  .flow-body { padding: 14px 16px; }
+  .flow-title { font-size: 14px; font-weight: 700; color: #1a1a2e; margin-bottom: 2px; }
+  .flow-name { font-size: 12px; color: #667085; }
+
+  /* ── SVG ──────────────────────────────────────────────────────────── */
+
+  svg#lines {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  /* ── Zoom info ───────────────────────────────────────────────────── */
+
+  #zoom-info {
+    position: fixed;
+    bottom: 12px; right: 16px;
+    font-size: 11px;
+    color: #98a2b3;
+    background: rgba(255,255,255,0.9);
+    padding: 3px 8px;
+    border-radius: 4px;
+    z-index: 100;
+  }
+
+  /* ── Toast ────────────────────────────────────────────────────────── */
+
+  #toast {
+    position: fixed;
+    bottom: 16px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1a1a2e; color: #fff;
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; transition: transform 0.3s ease; z-index: 300;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>Team Organization Chart</h1>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-line solid"></div> Structural</div>
+    <div class="legend-item"><div class="legend-line dashed"></div> PO functional</div>
+    <div class="legend-item"><div class="legend-line dashed-dm"></div> DM functional</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#e8f0fe;border:1px solid #4a90d9"></div> Filled</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#fff;border:1px dashed #ccc"></div> Vacant</div>
+  </div>
+  <div class="actions">
+    <button onclick="resetLayout()">Reset Layout</button>
+    <button onclick="fitToScreen()">Fit to Screen</button>
+    <button class="primary" onclick="exportPositions()">Export Layout</button>
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div id="canvas">
+    <svg id="lines" width="6000" height="4000"></svg>
+  </div>
+</div>
+
+<div id="zoom-info">100%</div>
+<div id="toast"></div>
+
+<script>
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════════════════
+
+const COLORS = {
+  cto: '#1a1a2e', lead: '#2563eb', architect: '#7c3aed', pm: '#0891b2',
+  engineer: '#059669', qa: '#d97706', infra: '#6366f1', security: '#dc2626', research: '#8b5cf6',
+};
+
+const people = [
+  { id: 'cto',        role: 'CTO',                     name: 'Yury Derbasov',          color: COLORS.cto,       reportsTo: null,       layer: 0 },
+  { id: 'po',         role: 'Product Owner',            name: 'Anton Efimov',           color: COLORS.pm,        reportsTo: 'cto',      layer: 1 },
+  { id: 'sa',         role: 'Security Architect',       name: 'Stas Erofeev',           color: COLORS.security,  reportsTo: 'cto',      layer: 2 },
+  { id: 'infraArch',  role: 'Infrastructure Architect', name: 'vacant',                 color: COLORS.infra,     reportsTo: 'cto',      layer: 2, vacant: true },
+  { id: 'intTL',      role: 'Integration Tech Lead',    name: 'vacant',                 color: COLORS.lead,      reportsTo: 'cto',      layer: 2, vacant: true },
+  { id: 'backTL',     role: 'Backend Tech Lead',        name: 'vacant',                 color: COLORS.lead,      reportsTo: 'cto',      layer: 2, vacant: true },
+  { id: 'cryptoTL',   role: 'Crypto Tech Lead',         name: 'Denis Gudim',            color: COLORS.lead,      reportsTo: 'cto',      layer: 2 },
+  { id: 'frontTL',    role: 'Frontend Tech Lead',       name: 'vacant',                 color: COLORS.lead,      reportsTo: 'cto',      layer: 2, vacant: true },
+  { id: 'dm',         role: 'Delivery Manager',         name: 'Svetlana Kostina',       color: COLORS.pm,        reportsTo: 'cto',      layer: 1 },
+  { id: 'solArch',    role: 'Solution Architect',       name: 'vacant',                 color: COLORS.architect, reportsTo: 'po',       layer: 2, vacant: true },
+  { id: 'bsa',        role: 'Business/System Analyst',  name: 'vacant',                 color: COLORS.pm,        reportsTo: 'po',       layer: 2, vacant: true },
+  { id: 'qa1',        role: 'QA',                       name: 'Shcherbakova Ekaterina', color: COLORS.qa,        reportsTo: 'dm',       layer: 3 },
+  { id: 'qa2',        role: 'QA',                       name: 'vacant',                 color: COLORS.qa,        reportsTo: 'dm',       layer: 3, vacant: true },
+  { id: 'redTeam',    role: 'Red Team Eng',             name: 'vacant',                 color: COLORS.security,  reportsTo: 'sa',       layer: 3, vacant: true },
+  { id: 'devops',     role: 'DevOps',                   name: 'Shahnawaz Ali',          color: COLORS.infra,     reportsTo: 'infraArch',layer: 3 },
+  { id: 'sre',        role: 'SRE',                      name: 'vacant',                 color: COLORS.infra,     reportsTo: 'infraArch',layer: 3, vacant: true },
+  { id: 'intEng',     role: 'Backend Eng Integrations', name: 'Hiten Jain',             color: COLORS.engineer,  reportsTo: 'intTL',    layer: 3 },
+  { id: 'backEng1',   role: 'Backend Eng Services',     name: 'Yashvardhan Gaur',       color: COLORS.engineer,  reportsTo: 'backTL',   layer: 3 },
+  { id: 'backEng2',   role: 'Backend Eng Services',     name: 'Ivanov Vladimir',        color: COLORS.engineer,  reportsTo: 'backTL',   layer: 3 },
+  { id: 'cryptoEng',  role: 'Backend Eng Crypto',       name: 'Krolevets Pavel',        color: COLORS.engineer,  reportsTo: 'cryptoTL', layer: 3 },
+  { id: 'cryptoRes',  role: 'Crypto Researcher',        name: 'Oleg Taraskin',          color: COLORS.research,  reportsTo: 'cryptoTL', layer: 3 },
+  { id: 'feMobile',   role: 'Frontend Eng Mobile',      name: 'Klopov Andrei',          color: COLORS.engineer,  reportsTo: 'frontTL',  layer: 3 },
+  { id: 'feNative',   role: 'Frontend Eng Native',      name: 'vacant',                 color: COLORS.engineer,  reportsTo: 'frontTL',  layer: 3, vacant: true },
+];
+
+const functionalLinks = [
+  { from: 'po', to: 'intTL' }, { from: 'po', to: 'backTL' },
+  { from: 'po', to: 'cryptoTL' }, { from: 'po', to: 'frontTL' }, { from: 'po', to: 'sa' },
+  { from: 'dm', to: 'intTL' }, { from: 'dm', to: 'backTL' },
+  { from: 'dm', to: 'cryptoTL' }, { from: 'dm', to: 'frontTL' }, { from: 'dm', to: 'sa' },
+];
+
+const flowNodes = [
+  { id: 'f_cto',  title: 'CTO',              name: 'Yury Derbasov',          color: '#1a1a2e', w: 200, h: 80 },
+  { id: 'f_po',   title: 'Product Owner',     name: 'Anton Efimov',          color: '#7c5cfc', w: 200, h: 80 },
+  { id: 'f_dm',   title: 'Delivery Manager',  name: 'Svetlana Kostina',      color: '#e67e22', w: 200, h: 80 },
+  { id: 'f_team', title: 'Engineering Team',   name: 'Tech Leads + Engineers',color: '#059669', w: 240, h: 80 },
+];
+
+const flowEdges = [
+  { from:'f_cto', to:'f_po',   label:'What and Why',                                color:'#7c5cfc', dash:false, side:'bottom-top' },
+  { from:'f_cto', to:'f_dm',   label:'When and How\nto deliver',                    color:'#e67e22', dash:false, side:'bottom-top' },
+  { from:'f_po',  to:'f_team', label:'Scope, Prioritization,\nProduct Roadmap',     color:'#7c5cfc', dash:false, side:'bottom-top' },
+  { from:'f_dm',  to:'f_team', label:'Sprint Plans, Release\nTimelines, Ceremonies', color:'#e67e22', dash:false, side:'bottom-top' },
+  { from:'f_team',to:'f_po',   label:'Technical Feasibility,\nEstimates, Blockers', color:'#7c5cfc', dash:true,  side:'left-right' },
+  { from:'f_team',to:'f_dm',   label:'Progress, Risks,\nImpediments',               color:'#e67e22', dash:true,  side:'right-left' },
+  { from:'f_po',  to:'f_dm',   label:'Align Scope\nvs Capacity',                    color:'#667085', dash:true,  side:'right-left' },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+
+const NODE_W = 172, NODE_H = 56, H_GAP = 20, V_GAP = 70;
+const FLOW_Y_OFFSET = 560; // flow diagram starts below org chart
+
+let positions = {};      // org node positions
+let flowPositions = {};  // flow node positions
+
+let scale = 1, panX = 0, panY = 0;
+let isPanning = false, panStartX, panStartY;
+let dragTarget = null, dragType = null, dragOX, dragOY; // unified drag
+
+const orgNodeEls = {};
+const flowNodeEls = {};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LAYOUT
+// ═══════════════════════════════════════════════════════════════════════════
+
+function computeOrgLayout() {
+  const childMap = {};
+  people.forEach(p => {
+    if (p.reportsTo) {
+      if (!childMap[p.reportsTo]) childMap[p.reportsTo] = [];
+      childMap[p.reportsTo].push(p.id);
+    }
+  });
+
+  const subtreeW = {};
+  function calcWidth(id) {
+    const kids = childMap[id] || [];
+    if (kids.length === 0) { subtreeW[id] = NODE_W; return NODE_W; }
+    let total = 0;
+    kids.forEach((kid, i) => { total += calcWidth(kid); if (i < kids.length - 1) total += H_GAP; });
+    subtreeW[id] = Math.max(NODE_W, total);
+    return subtreeW[id];
+  }
+  calcWidth('cto');
+
+  const pos = {};
+  function assign(id, left) {
+    const person = people.find(p => p.id === id);
+    const w = subtreeW[id];
+    pos[id] = { x: left + (w - NODE_W) / 2, y: 60 + person.layer * (NODE_H + V_GAP) };
+    const kids = childMap[id] || [];
+    let cx = left;
+    kids.forEach(kid => { assign(kid, cx); cx += subtreeW[kid] + H_GAP; });
+  }
+  assign('cto', 40);
+  return pos;
+}
+
+function computeFlowLayout() {
+  // Center the flow diagram horizontally relative to the org chart
+  let orgMinX = Infinity, orgMaxX = -Infinity;
+  Object.values(positions).forEach(p => {
+    orgMinX = Math.min(orgMinX, p.x);
+    orgMaxX = Math.max(orgMaxX, p.x + NODE_W);
+  });
+  const orgCenterX = (orgMinX + orgMaxX) / 2;
+
+  return {
+    f_cto:  { x: orgCenterX - 100, y: FLOW_Y_OFFSET + 30 },
+    f_po:   { x: orgCenterX - 290, y: FLOW_Y_OFFSET + 180 },
+    f_dm:   { x: orgCenterX + 90,  y: FLOW_Y_OFFSET + 180 },
+    f_team: { x: orgCenterX - 120, y: FLOW_Y_OFFSET + 340 },
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CREATE ELEMENTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('canvas');
+
+function createOrgNodes() {
+  // Section title
+  const title = document.createElement('div');
+  title.className = 'section-title';
+  title.id = 'org-title';
+  title.textContent = 'Org Chart — Structural & Functional Reporting';
+  canvas.appendChild(title);
+
+  people.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'node' + (p.vacant ? ' vacant' : '');
+    el.dataset.id = p.id;
+    el.innerHTML = `<div class="node-color-bar" style="background:${p.color}"></div>
+      <div class="node-body"><div class="node-role">${p.role}</div>
+      <div class="node-name">${p.vacant ? 'Vacant' : p.name}</div></div>`;
+    canvas.appendChild(el);
+    orgNodeEls[p.id] = el;
+    el.addEventListener('pointerdown', e => startDrag(e, p.id, 'org'));
+  });
+}
+
+function createFlowNodes() {
+  // Section title
+  const title = document.createElement('div');
+  title.className = 'section-title';
+  title.id = 'flow-title';
+  title.textContent = 'CTO Vision Flow — How Direction Cascades Through PO & DM';
+  canvas.appendChild(title);
+
+  // Separator line
+  const sep = document.createElement('div');
+  sep.id = 'flow-separator';
+  sep.style.cssText = 'position:absolute;height:1px;background:#d0d5dd;pointer-events:none;';
+  canvas.appendChild(sep);
+
+  flowNodes.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'flow-node';
+    el.style.width = n.w + 'px';
+    el.dataset.id = n.id;
+    el.innerHTML = `<div class="flow-color-bar" style="background:${n.color}"></div>
+      <div class="flow-body"><div class="flow-title">${n.title}</div>
+      <div class="flow-name">${n.name}</div></div>`;
+    canvas.appendChild(el);
+    flowNodeEls[n.id] = el;
+    el.addEventListener('pointerdown', e => startDrag(e, n.id, 'flow'));
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════════
+
+function render() {
+  // Org nodes
+  people.forEach(p => {
+    orgNodeEls[p.id].style.left = positions[p.id].x + 'px';
+    orgNodeEls[p.id].style.top  = positions[p.id].y + 'px';
+  });
+
+  // Flow nodes
+  flowNodes.forEach(n => {
+    flowNodeEls[n.id].style.left = flowPositions[n.id].x + 'px';
+    flowNodeEls[n.id].style.top  = flowPositions[n.id].y + 'px';
+  });
+
+  // Section titles + separator
+  let orgMinX = Infinity, orgMaxX = -Infinity;
+  Object.values(positions).forEach(p => { orgMinX = Math.min(orgMinX, p.x); orgMaxX = Math.max(orgMaxX, p.x + NODE_W); });
+
+  const orgTitle = document.getElementById('org-title');
+  orgTitle.style.left = orgMinX + 'px';
+  orgTitle.style.top = '20px';
+
+  const flowTitle = document.getElementById('flow-title');
+  flowTitle.style.left = orgMinX + 'px';
+  flowTitle.style.top = (FLOW_Y_OFFSET - 10) + 'px';
+
+  const sep = document.getElementById('flow-separator');
+  sep.style.left = (orgMinX - 40) + 'px';
+  sep.style.top = (FLOW_Y_OFFSET - 25) + 'px';
+  sep.style.width = (orgMaxX - orgMinX + 80) + 'px';
+
+  drawAllLines();
+  canvas.style.transform = `translate(${panX}px,${panY}px) scale(${scale})`;
+  document.getElementById('zoom-info').textContent = Math.round(scale * 100) + '%';
+}
+
+function drawAllLines() {
+  let svg = '';
+
+  // ── Org: Structural lines ──
+  people.forEach(p => {
+    if (!p.reportsTo) return;
+    const f = positions[p.reportsTo], t = positions[p.id];
+    if (!f || !t) return;
+    const x1=f.x+NODE_W/2, y1=f.y+NODE_H, x2=t.x+NODE_W/2, y2=t.y;
+    const my=(y1+y2)/2;
+    svg += `<path d="M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}" fill="none" stroke="#b0b7c3" stroke-width="1.5"/>`;
+  });
+
+  // ── Org: PO functional ──
+  functionalLinks.filter(l => l.from === 'po').forEach(l => {
+    const f=positions[l.from], t=positions[l.to];
+    if (!f||!t) return;
+    svg += `<line x1="${f.x+NODE_W/2}" y1="${f.y+NODE_H/2}" x2="${t.x+NODE_W/2}" y2="${t.y+NODE_H/2}"
+      stroke="#7c5cfc" stroke-width="1.2" stroke-dasharray="6,4" opacity="0.4"/>`;
+  });
+
+  // ── Org: DM functional ──
+  functionalLinks.filter(l => l.from === 'dm').forEach(l => {
+    const f=positions[l.from], t=positions[l.to];
+    if (!f||!t) return;
+    svg += `<line x1="${f.x+NODE_W/2}" y1="${f.y+NODE_H/2}" x2="${t.x+NODE_W/2}" y2="${t.y+NODE_H/2}"
+      stroke="#e67e22" stroke-width="1.2" stroke-dasharray="6,4" opacity="0.4"/>`;
+  });
+
+  // ── Flow: arrow markers ──
+  const usedColors = [...new Set(flowEdges.map(e => e.color))];
+  let defs = '<defs>';
+  usedColors.forEach(c => {
+    defs += `<marker id="a-${c.replace('#','')}" viewBox="0 0 10 10" refX="9" refY="5"
+      markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="${c}"/></marker>`;
+  });
+  defs += '</defs>';
+
+  // ── Flow: edges ──
+  const nMap = {}; flowNodes.forEach(n => nMap[n.id] = n);
+
+  flowEdges.forEach(e => {
+    const fp=flowPositions[e.from], tp=flowPositions[e.to];
+    const fn=nMap[e.from], tn=nMap[e.to];
+    if(!fp||!tp) return;
+
+    let x1,y1,x2,y2;
+    if (e.side==='bottom-top')      { x1=fp.x+fn.w/2; y1=fp.y+fn.h; x2=tp.x+tn.w/2; y2=tp.y; }
+    else if (e.side==='left-right') { x1=fp.x;         y1=fp.y+fn.h/2; x2=tp.x+tn.w; y2=tp.y+tn.h/2; }
+    else if (e.side==='right-left') { x1=fp.x+fn.w;    y1=fp.y+fn.h/2; x2=tp.x;       y2=tp.y+tn.h/2; }
+
+    const da = e.dash ? 'stroke-dasharray="8,5"' : '';
+    const mk = `marker-end="url(#a-${e.color.replace('#','')})"`;
+
+    if (e.side==='bottom-top') {
+      const my=(y1+y2)/2;
+      svg += `<path d="M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}" fill="none" stroke="${e.color}" stroke-width="2" ${da} ${mk}/>`;
+    } else {
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${e.color}" stroke-width="2" ${da} ${mk}/>`;
+    }
+
+    // Label
+    const mx=(x1+x2)/2, my2=(y1+y2)/2;
+    const lines = e.label.split('\n');
+    const lx=mx, ly=my2-(lines.length*7);
+    svg += `<rect x="${lx-72}" y="${ly-11}" width="144" height="${lines.length*15+8}" rx="4" fill="rgba(255,255,255,0.92)" stroke="${e.color}" stroke-width="0.5"/>`;
+    lines.forEach((line,i) => {
+      svg += `<text x="${lx}" y="${ly+4+i*15}" text-anchor="middle" font-size="10" font-family="Segoe UI,system-ui,sans-serif" font-weight="500" fill="${e.color}">${line}</text>`;
+    });
+  });
+
+  document.getElementById('lines').innerHTML = defs + svg;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DRAG (unified for both org and flow nodes)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function startDrag(e, id, type) {
+  e.stopPropagation(); e.preventDefault();
+  dragTarget = id; dragType = type;
+  const pos = type === 'org' ? positions[id] : flowPositions[id];
+  dragOX = (e.clientX - panX)/scale - pos.x;
+  dragOY = (e.clientY - panY)/scale - pos.y;
+  const el = type === 'org' ? orgNodeEls[id] : flowNodeEls[id];
+  el.classList.add('dragging');
+  document.addEventListener('pointermove', onDrag);
+  document.addEventListener('pointerup', endDrag);
+}
+
+function onDrag(e) {
+  if (!dragTarget) return;
+  const pos = dragType === 'org' ? positions[dragTarget] : flowPositions[dragTarget];
+  pos.x = (e.clientX - panX)/scale - dragOX;
+  pos.y = (e.clientY - panY)/scale - dragOY;
+  render();
+}
+
+function endDrag() {
+  if (dragTarget) {
+    const el = dragType === 'org' ? orgNodeEls[dragTarget] : flowNodeEls[dragTarget];
+    el.classList.remove('dragging');
+    dragTarget = null; dragType = null;
+  }
+  document.removeEventListener('pointermove', onDrag);
+  document.removeEventListener('pointerup', endDrag);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAN & ZOOM (single canvas)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const container = document.getElementById('canvas-container');
+
+container.addEventListener('pointerdown', e => {
+  if (e.target.closest('.node') || e.target.closest('.flow-node')) return;
+  isPanning = true;
+  panStartX = e.clientX - panX;
+  panStartY = e.clientY - panY;
+  container.classList.add('grabbing');
+});
+
+document.addEventListener('pointermove', e => {
+  if (!isPanning) return;
+  panX = e.clientX - panStartX;
+  panY = e.clientY - panStartY;
+  render();
+});
+
+document.addEventListener('pointerup', () => {
+  isPanning = false;
+  container.classList.remove('grabbing');
+});
+
+container.addEventListener('wheel', e => {
+  e.preventDefault();
+  const r = container.getBoundingClientRect();
+  const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const prev = scale;
+  scale = Math.min(3, Math.max(0.1, scale * (e.deltaY > 0 ? 0.92 : 1.08)));
+  panX = mx - (mx - panX) * (scale / prev);
+  panY = my - (my - panY) * (scale / prev);
+  render();
+}, { passive: false });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TOOLBAR ACTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function resetLayout() {
+  positions = computeOrgLayout();
+  flowPositions = computeFlowLayout();
+  render();
+  showToast('Layout reset');
+}
+
+function fitToScreen() {
+  // Bounding box of ALL nodes (org + flow)
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+
+  people.forEach(p => {
+    const q = positions[p.id];
+    minX=Math.min(minX,q.x); minY=Math.min(minY,q.y);
+    maxX=Math.max(maxX,q.x+NODE_W); maxY=Math.max(maxY,q.y+NODE_H);
+  });
+
+  flowNodes.forEach(n => {
+    const q = flowPositions[n.id];
+    minX=Math.min(minX,q.x); minY=Math.min(minY,q.y);
+    maxX=Math.max(maxX,q.x+n.w); maxY=Math.max(maxY,q.y+n.h);
+  });
+
+  const cw=maxX-minX+100, ch=maxY-minY+100;
+  const vw=container.clientWidth, vh=container.clientHeight;
+  scale = Math.min(vw/cw, vh/ch, 1.5);
+  panX = (vw - cw*scale)/2 - minX*scale + 50*scale;
+  panY = (vh - ch*scale)/2 - minY*scale + 50*scale;
+  render();
+  showToast('Fitted to screen');
+}
+
+function exportPositions() {
+  const d = { org: {}, flow: {} };
+  people.forEach(p => { d.org[p.id] = { x:Math.round(positions[p.id].x), y:Math.round(positions[p.id].y) }; });
+  flowNodes.forEach(n => { d.flow[n.id] = { x:Math.round(flowPositions[n.id].x), y:Math.round(flowPositions[n.id].y) }; });
+  navigator.clipboard.writeText(JSON.stringify(d,null,2))
+    .then(() => showToast('Layout copied to clipboard'))
+    .catch(() => { console.log(d); showToast('Logged to console'); });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+
+positions = computeOrgLayout();
+createOrgNodes();
+flowPositions = computeFlowLayout();
+createFlowNodes();
+requestAnimationFrame(() => fitToScreen());
+
+</script>
+</body>
+</html>
