@@ -187,6 +187,92 @@
     font-size: 13px; transition: transform 0.3s ease; z-index: 300;
   }
   #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── People list panel ───────────────────────────────────────────── */
+
+  #people-panel {
+    position: fixed;
+    top: 46px;
+    right: 0;
+    width: min(520px, 100vw);
+    bottom: 0;
+    background: #fff;
+    box-shadow: -6px 0 28px rgba(0,0,0,0.14);
+    z-index: 250;
+    transform: translateX(100%);
+    transition: transform 0.22s ease;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #people-panel.open { transform: translateX(0); }
+
+  .people-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e4e7ec;
+    flex-shrink: 0;
+    background: #fafbfc;
+  }
+
+  .people-panel-head h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a2e;
+    letter-spacing: -0.2px;
+  }
+
+  .people-panel-head button {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 18px;
+    line-height: 1;
+    color: #667085;
+    cursor: pointer;
+  }
+
+  .people-panel-head button:hover { background: #e4e7ec; color: #1a1a2e; }
+
+  .people-panel-body {
+    overflow: auto;
+    flex: 1;
+    padding: 10px 14px 20px;
+  }
+
+  #people-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  #people-table th {
+    text-align: left;
+    font-weight: 600;
+    color: #667085;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-size: 10px;
+    padding: 8px 6px;
+    border-bottom: 2px solid #e4e7ec;
+    position: sticky;
+    top: 0;
+    background: #fff;
+  }
+
+  #people-table td {
+    padding: 9px 6px;
+    border-bottom: 1px solid #f0f2f5;
+    vertical-align: top;
+    color: #1a1a2e;
+  }
+
+  #people-table tr.row-vacant td { color: #98a2b3; }
+  #people-table tr.row-vacant td:first-child { font-style: italic; }
 </style>
 </head>
 <body>
@@ -203,6 +289,7 @@
   <div class="actions">
     <button onclick="resetLayout()">Reset Layout</button>
     <button onclick="fitToScreen()">Fit to Screen</button>
+    <button onclick="togglePeopleList()">People list</button>
     <button class="primary" onclick="exportPositions()">Export Layout</button>
   </div>
 </div>
@@ -215,6 +302,21 @@
 
 <div id="zoom-info">100%</div>
 <div id="toast"></div>
+
+<div id="people-panel" aria-hidden="true">
+  <div class="people-panel-head">
+    <h2>Person — position — manager</h2>
+    <button type="button" onclick="togglePeopleList()" aria-label="Close">×</button>
+  </div>
+  <div class="people-panel-body">
+    <table id="people-table">
+      <thead>
+        <tr><th>Person</th><th>Position</th><th>Manager</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
 
 <script>
 function showToast(msg) {
@@ -593,6 +695,55 @@ container.addEventListener('wheel', e => {
   panY = my - (my - panY) * (scale / prev);
   render();
 }, { passive: false });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PEOPLE LIST (person — position — manager)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DIRECT_REPORT_LABEL = 'Direct report to me';
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function personCell(p) {
+  return p.vacant ? 'Vacant' : p.name;
+}
+
+function managerCell(p) {
+  if (!p.reportsTo) return DIRECT_REPORT_LABEL;
+  const m = people.find(x => x.id === p.reportsTo);
+  if (!m) return '—';
+  if (m.vacant) return `Vacant (${m.role})`;
+  return `${m.name} (${m.role})`;
+}
+
+function renderPeopleTable() {
+  const tbody = document.querySelector('#people-table tbody');
+  const sorted = [...people].sort((a, b) => {
+    if (a.layer !== b.layer) return a.layer - b.layer;
+    return (a.role + a.id).localeCompare(b.role + b.id);
+  });
+  tbody.innerHTML = sorted.map(p =>
+    `<tr class="${p.vacant ? 'row-vacant' : ''}">` +
+    `<td>${escapeHtml(personCell(p))}</td>` +
+    `<td>${escapeHtml(p.role)}</td>` +
+    `<td>${escapeHtml(managerCell(p))}</td>` +
+    `</tr>`
+  ).join('');
+}
+
+function togglePeopleList() {
+  const pan = document.getElementById('people-panel');
+  const open = !pan.classList.contains('open');
+  pan.classList.toggle('open', open);
+  pan.setAttribute('aria-hidden', open ? 'false' : 'true');
+  if (open) renderPeopleTable();
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TOOLBAR ACTIONS
