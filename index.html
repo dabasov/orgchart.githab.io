@@ -338,9 +338,9 @@ const people = [
   { id: 'cto',        role: 'CTO',                      name: 'Yury Derbasov',          color: COLORS.cto,       reportsTo: null,        layer: 0 },
   { id: 'po',         role: 'Product Owner',            name: 'Anton Efimov',           color: COLORS.pm,        reportsTo: 'cto',       layer: 1 },
   { id: 'dm',         role: 'Delivery Manager',         name: 'Svetlana Kostina',       color: COLORS.pm,        reportsTo: 'cto',       layer: 1 },
-  { id: 'sa',         role: 'Security Architect',       name: 'Stas Erofeev',           color: COLORS.security,  reportsTo: 'cto',       layer: 1 },
-  { id: 'infraArch',  role: 'Infrastructure Architect', name: 'Nikita Nadezhin',        color: COLORS.infra,     reportsTo: 'cto',       layer: 1 },
-  { id: 'cryptoRes',  role: 'Crypto Researcher',        name: 'Oleg Taraskin',          color: COLORS.research,  reportsTo: 'cto',       layer: 1 },
+  { id: 'sa',         role: 'Security Architect',       name: 'Stas Erofeev',           color: COLORS.security,  reportsTo: 'cto',       layer: 2 },
+  { id: 'infraArch',  role: 'Infrastructure Architect', name: 'Nikita Nadezhin',        color: COLORS.infra,     reportsTo: 'cto',       layer: 2 },
+  { id: 'cryptoRes',  role: 'Crypto Researcher',        name: 'Oleg Taraskin',          color: COLORS.research,  reportsTo: 'cto',       layer: 2 },
   { id: 'intTL',      role: 'Integration Tech Lead',    name: 'Anton Mazur',            color: COLORS.lead,      reportsTo: 'dm',        layer: 2 },
   { id: 'fullStack',  role: 'Full Stack Staff',         name: 'vacant',                 color: COLORS.lead,      reportsTo: 'dm',        layer: 2, vacant: true },
   { id: 'cryptoTL',   role: 'Crypto Tech Lead',         name: 'vacant',                 color: COLORS.lead,      reportsTo: 'dm',        layer: 2, vacant: true },
@@ -358,8 +358,8 @@ const people = [
 
 const functionalLinks = [
   { from: 'po', to: 'intTL' }, { from: 'po', to: 'fullStack' },
-  { from: 'po', to: 'cryptoTL' }, { from: 'po', to: 'sa' },
-  { from: 'dm', to: 'sa' },
+  { from: 'po', to: 'cryptoTL' }, { from: 'po', to: 'sa' }, { from: 'po', to: 'infraArch' },
+  { from: 'dm', to: 'sa' }, { from: 'dm', to: 'infraArch' },
 ];
 
 const flowNodes = [
