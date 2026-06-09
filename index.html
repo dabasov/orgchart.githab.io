@@ -335,7 +335,7 @@ const COLORS = {
 };
 
 const people = [
-  { id: 'cto',        role: 'CTO',                      name: 'Yury Derbasov',          color: COLORS.cto,       reportsTo: null,        layer: 0 },
+  { id: 'cto',        role: 'CTO/CPO',                  name: 'Yury Derbasov',          color: COLORS.cto,       reportsTo: null,        layer: 0 },
   { id: 'po',         role: 'Product Owner',            name: 'Anton Efimov',           color: COLORS.pm,        reportsTo: 'cto',       layer: 1 },
   { id: 'dm',         role: 'Delivery Manager',         name: 'Svetlana Kostina',       color: COLORS.pm,        reportsTo: 'cto',       layer: 1 },
   { id: 'sa',         role: 'Security Architect',       name: 'Stas Erofeev',           color: COLORS.security,  reportsTo: 'cto',       layer: 2 },
@@ -363,7 +363,7 @@ const functionalLinks = [
 ];
 
 const flowNodes = [
-  { id: 'f_cto',  title: 'CTO',              name: 'Yury Derbasov',          color: '#1a1a2e', w: 200, h: 80 },
+  { id: 'f_cto',  title: 'CTO/CPO',          name: 'Yury Derbasov',          color: '#1a1a2e', w: 200, h: 80 },
   { id: 'f_po',   title: 'Product Owner',     name: 'Anton Efimov',          color: '#7c5cfc', w: 200, h: 80 },
   { id: 'f_dm',   title: 'Delivery Manager',  name: 'Svetlana Kostina',      color: '#e67e22', w: 200, h: 80 },
   { id: 'f_team', title: 'Engineering Team',   name: 'Tech Leads + Engineers',color: '#059669', w: 240, h: 80 },
@@ -430,6 +430,8 @@ function computeOrgLayout() {
     kids.forEach(kid => { assign(kid, cx); cx += subtreeW[kid] + H_GAP; });
   }
   assign('cto', 40);
+  // Keep PO (Anton) just to the right of DM (Svetlana) on the operational layer
+  if (pos.po && pos.dm) { pos.po.x = pos.dm.x + NODE_W + 140; pos.po.y = pos.dm.y; }
   return pos;
 }
 
