@@ -374,8 +374,6 @@ const flowEdges = [
   { from:'f_cto', to:'f_dm',   label:'When and How\nto deliver',                    color:'#e67e22', dash:false, side:'bottom-top' },
   { from:'f_po',  to:'f_team', label:'Scope, Prioritization,\nProduct Roadmap',     color:'#7c5cfc', dash:false, side:'bottom-top' },
   { from:'f_dm',  to:'f_team', label:'Sprint Plans, Release\nTimelines, Ceremonies', color:'#e67e22', dash:false, side:'bottom-top' },
-  { from:'f_team',to:'f_po',   label:'Technical Feasibility,\nEstimates, Blockers', color:'#7c5cfc', dash:true,  side:'left-right' },
-  { from:'f_team',to:'f_dm',   label:'Progress, Risks,\nImpediments',               color:'#e67e22', dash:true,  side:'right-left' },
   { from:'f_po',  to:'f_dm',   label:'Align Scope\nvs Capacity',                    color:'#667085', dash:true,  side:'right-left' },
 ];
 
@@ -609,7 +607,7 @@ function drawAllLines() {
     }
 
     // Label
-    const mx=(x1+x2)/2, my2=(y1+y2)/2;
+    const mx=(x1+x2)/2 + (e.labelDx||0), my2=(y1+y2)/2 + (e.labelDy||0);
     const lines = e.label.split('\n');
     const lx=mx, ly=my2-(lines.length*7);
     svg += `<rect x="${lx-72}" y="${ly-11}" width="144" height="${lines.length*15+8}" rx="4" fill="rgba(255,255,255,0.92)" stroke="${e.color}" stroke-width="0.5"/>`;
