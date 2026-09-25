@@ -357,6 +357,10 @@ const people = [
   { id: 'intEng',     role: 'Backend Eng Integrations', name: 'Hiten Jain',             color: COLORS.engineer,  reportsTo: 'intTL',     layer: 3 },
   { id: 'cryptoEng',  role: 'Backend Eng Crypto',       name: 'Krolevets Pavel',        color: COLORS.engineer,  reportsTo: 'cryptoTL',  layer: 3 },
   { id: 'feNative',   role: 'Mobile Native Eng',        name: 'Yevgeniy Zakharov',      color: COLORS.engineer,  reportsTo: 'cryptoTL',  layer: 3 },
+  // Backoffice project
+  { id: 'boDM',       role: 'Delivery Manager',         name: 'Mikhail Mustafin',       color: COLORS.pm,        reportsTo: 'cto',       layer: 1 },
+  { id: 'boFS1',      role: 'Fullstack Eng',            name: 'Roman Gordeev',          color: COLORS.engineer,  reportsTo: 'boDM',      layer: 2 },
+  { id: 'boFS2',      role: 'Fullstack Eng',            name: 'Ayub Begimkulov',        color: COLORS.engineer,  reportsTo: 'boDM',      layer: 2 },
 ];
 
 const functionalLinks = [
@@ -468,6 +472,12 @@ function createOrgNodes() {
   title.textContent = 'Org Chart — Structural & Functional Reporting';
   canvas.appendChild(title);
 
+  const boTitle = document.createElement('div');
+  boTitle.className = 'section-title';
+  boTitle.id = 'bo-title';
+  boTitle.textContent = 'Backoffice';
+  canvas.appendChild(boTitle);
+
   people.forEach(p => {
     const el = document.createElement('div');
     el.className = 'node' + (p.vacant ? ' vacant' : '');
@@ -533,6 +543,10 @@ function render() {
   const orgTitle = document.getElementById('org-title');
   orgTitle.style.left = orgMinX + 'px';
   orgTitle.style.top = '20px';
+
+  const boTitle = document.getElementById('bo-title');
+  boTitle.style.left = positions.boDM.x + 'px';
+  boTitle.style.top = (positions.boDM.y - 24) + 'px';
 
   const flowTitle = document.getElementById('flow-title');
   flowTitle.style.left = orgMinX + 'px';
